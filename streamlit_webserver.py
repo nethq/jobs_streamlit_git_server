@@ -1,27 +1,3 @@
-import subprocess
-import sys
-import pkg_resources
-
-def install(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-required = {
-    'Flask-JWT-Extended', 'streamlit', 'pandas', 'pysqlite3', 'regex',
-    'numpy', 'collections-extended', 'nltk', 'matplotlib',
-    'streamlit-authenticator', 'sympy', 'altair', 'sqlalchemy'
-}
-
-# Check if the required packages are installed, install if missing
-installed = {pkg.key for pkg in pkg_resources.working_set}
-missing = required - installed
-
-for package in missing:
-    install(package)
-
-# NLTK stopwords additional setup
-import nltk
-nltk.download('stopwords')
-
 from flask_jwt_extended import set_access_cookies
 import streamlit as st
 import pandas as pd
