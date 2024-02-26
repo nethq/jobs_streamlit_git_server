@@ -1,5 +1,3 @@
-from datetime import date
-from tkinter import PAGES
 from flask_jwt_extended import set_access_cookies
 import streamlit as st
 import pandas as pd
@@ -15,9 +13,6 @@ import numpy as np
 import streamlit_authenticator as stauth
 from sympy import comp
 import altair as alt
-#install ntlk bulgarian stopwords
-import nltk
-import mysql.connector
 from sqlalchemy import create_engine
 
 global_df = None
