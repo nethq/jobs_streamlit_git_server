@@ -1,3 +1,5 @@
+from datetime import date
+from tkinter import PAGES
 from flask_jwt_extended import set_access_cookies
 import streamlit as st
 import pandas as pd
@@ -15,6 +17,8 @@ import streamlit_authenticator as stauth
 from sympy import comp
 import altair as alt
 #install ntlk bulgarian stopwords
+import nltk
+import mysql.connector
 from sqlalchemy import create_engine
 
 global_df = None
@@ -193,21 +197,12 @@ def actual_streamlit_app():
                 engine = create_engine(conn)
 
                 # Query to select data (modify as needed)
-                conn = sqlite3.connect('jobs.db')
                 temp = pd.read_sql_query('SELECT * FROM JobPosts', engine)
                 temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', engine), on='fingerprint',how='left')
                 temp = temp.merge(pd.read_sql_query('SELECT fingerprint, view_count, date, MAX(idx) as max_idx FROM view_counts WHERE view_count != \'Nan\'  GROUP BY fingerprint, view_count, date', engine), on='fingerprint',how='left')
                 #write any errors to the user
                 global_df = temp
                 return temp
-        else:      
-            conn = sqlite3.connect('jobs.db')
-            temp = pd.read_sql_query('SELECT * FROM JobPosts', conn)
-            temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', conn), on='fingerprint',how='left')
-            temp = temp.merge(pd.read_sql_query('SELECT * FROM view_counts WHERE view_count!="Nan" GROUP BY fingerprint having max(view_count)', conn), on='fingerprint',how='left')
-            global_df = temp
-            return temp
-
 
     st.set_page_config(layout='wide')  # Set to wide mode
     df = load_data()
