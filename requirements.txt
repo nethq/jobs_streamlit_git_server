@@ -1,7 +1,6 @@
 Flask-JWT-Extended
 streamlit
 pandas
-pysqlite3  # Note: Use only if you need features not available in the standard sqlite3 module
 regex  # Note: This is an alternative to the built-in re module
 numpy
 collections-extended  # Note: This is an extended version of the built-in collections module
