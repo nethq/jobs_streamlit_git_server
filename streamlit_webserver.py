@@ -3,7 +3,6 @@ from tkinter import PAGES
 from flask_jwt_extended import set_access_cookies
 import streamlit as st
 import pandas as pd
-import sqlite3
 import re
 import streamlit as st
 import pandas as pd
