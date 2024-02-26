@@ -10,3 +10,4 @@ streamlit-authenticator
 sympy
 altair
 sqlalchemy
+mysql-connector
