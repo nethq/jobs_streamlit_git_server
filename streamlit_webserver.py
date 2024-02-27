@@ -216,7 +216,14 @@ def main():
 
     # Display loaded DataFrame
     if session_state.df is not None:
-        st.dataframe(session_state.df, height=600)
+        if session_state.df_filtered is not None:
+            dataset_choice = st.sidebar.radio('Choose Dataset for Analysis', ('Complete Dataset', 'Filtered Dataset'))
+            if dataset_choice == 'Filtered Dataset':
+                st.dataframe(session_state.df_filtered, height=600)
+            else:
+                st.dataframe(session_state.df, height=600)
+        else:
+            st.dataframe(session_state.df, height=600)
 
     # Analysis options
     analysis_options = ['Salary Distribution Analysis', 'Job Title Salary Analysis', 
@@ -250,7 +257,7 @@ def main():
     if st.sidebar.button('Run Analysis'):
         # Extract potential salaries for analysis
         data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
-
+        
         # Analysis based on user selection
         if analysis_choice == 'Salary Distribution Analysis':
             salary_distribution_analysis(data_to_analyze)
