@@ -8,7 +8,6 @@ import numpy as np
 import altair as alt
 from sqlalchemy import create_engine
 
-
 # Function to establish database connection
 def connect_to_database(remote_db=False, user=None, password=None, host=None, port=None, database=None):
     if remote_db:
@@ -19,7 +18,7 @@ def connect_to_database(remote_db=False, user=None, password=None, host=None, po
         pass
 
 # Function to load data from the database
-@st.cache_data
+@st.cache_data()
 def load_data(_engine):
     try:
         query = 'SELECT * FROM JobPosts'
@@ -30,6 +29,7 @@ def load_data(_engine):
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return None
+
 
 # Function to filter dataframe based on user queries
 def filter_dataframe(df, queries):
@@ -71,24 +71,19 @@ def extract_potential_salaries(text):
             filtered_matches.append(match)
     return filtered_matches if filtered_matches else None
 
-# Function to compute score based on keywords
+# Function to perform score computation based on keywords
 def score_compute(data, tokenized_text):
-    
-    if len(tokenized_text) == 0:
-        st.write("Please enter a valid CV")
-        return
-    tokenized_text = re.split(r'\W+', cv)
-    tokenized_text = [word.lower() for word in tokenized_text]
-    tokenized_text = [word for word in tokenized_text if word.isalpha()]
+    if isinstance(tokenized_text, str):
+        tokenized_text = set(tokenized_text.lower().split())
+    elif isinstance(tokenized_text, set):
+        tokenized_text = {word.lower() for word in tokenized_text}
+
     stop_words = set(stopwords.words('english'))
-    tokenized_text = [word for word in tokenized_text if word not in stop_words]
-    set_tokenized_words = set(tokenized_text)
-    data['text'] = data['text'].apply(lambda x: re.split(r'\W+', x))
-    data['text'] = data['text'].apply(lambda x: [word.lower() for word in x])
-    data['text'] = data['text'].apply(lambda x: [word for word in x if word.isalpha()])
-    data['text'] = data['text'].apply(lambda x: [word for word in x if word not in stop_words])
-    data['text'] = data['text'].apply(lambda x: set(x))
-    data['score'] = data['text'].apply(lambda x: len(x.intersection(set_tokenized_words)))
+    if isinstance(data['text'], str):
+        data['score'] = data['text'].apply(lambda x: len(set(re.split(r'\W+', x.lower())).difference(stop_words).intersection(tokenized_text)))        
+    else:
+        #based on the type, it says here its a series
+        data['score'] = data['text'].apply(lambda x: len(set(re.split(r'\W+', x.lower())).difference(stop_words).intersection(tokenized_text)) if isinstance(x, str) else 0)
     return data
 
 # Function to perform analysis on companies sorted by highest average score
@@ -98,10 +93,18 @@ def companies_sorted_by_highest_avg_score(data, tokenized_text):
         return
     company_scores = {}
     unique_companies = score_data['secondary_text'].unique()
+    #get the number of posts of each unique company
+    posts_count ={}
     for company in unique_companies:
+        posts_count[company] = score_data[score_data['secondary_text'] == company].shape[0]
         company_score = score_data[score_data['secondary_text'] == company]['score'].mean()
         company_scores[company] = company_score
     company_scores = pd.DataFrame(list(company_scores.items()), columns=['company', 'average_score'])
+    company_scores['posts_count'] = company_scores['company'].apply(lambda x: posts_count[x])
+    #print the datatype of the "comapny_scores"]
+    #if its a dataframe, then sort it by the average_score ,and secondly by the posts_count
+    if isinstance(company_scores, pd.DataFrame):
+        company_scores = company_scores.sort_values(by=['average_score', 'posts_count'], ascending=False)
     st.write(company_scores)
     st.altair_chart(alt.Chart(company_scores).mark_bar().encode(
         x=alt.X('average_score', title="Average Score"),
@@ -178,8 +181,8 @@ def main():
     # Initialize session state variables
     if 'db_engine' not in session_state:
         session_state.db_engine = None
-    if 'df' not in session_state:
-        session_state.df = None
+    if 'original_df' not in session_state:
+        session_state.original_df = None
     if 'df_filtered' not in session_state:
         session_state.df_filtered = None
 
@@ -205,29 +208,22 @@ def main():
             st.sidebar.info("No database connection needed for local data processing.")
 
     # Check if DataFrame is loaded
-    if session_state.df is None and session_state.db_engine:
+    if session_state.original_df is None and session_state.db_engine:
         st.sidebar.header('Data Loading')
         if st.sidebar.button('Load Data'):
-            session_state.df = load_data(session_state.db_engine)
-            if session_state.df is not None:
+            session_state.original_df = load_data(session_state.db_engine)
+            if session_state.original_df is not None:
                 st.sidebar.success("Data loaded successfully!")
             else:
                 st.sidebar.error("Failed to load data!")
 
     # Display loaded DataFrame
-    if session_state.df is not None:
-        if session_state.df_filtered is not None:
-            dataset_choice = st.sidebar.radio('Choose Dataset for Analysis', ('Complete Dataset', 'Filtered Dataset'))
-            if dataset_choice == 'Filtered Dataset':
-                st.dataframe(session_state.df_filtered, height=600)
-            else:
-                st.dataframe(session_state.df, height=600)
-        else:
-            st.dataframe(session_state.df, height=600)
+    if session_state.original_df is not None:
+        st.dataframe(session_state.original_df, height=600)
 
     # Analysis options
     analysis_options = ['Salary Distribution Analysis', 'Job Title Salary Analysis', 
-                        'Company Salary Analysis', 'Frequency of Words Analysis', 'Score based on given keywords','Companies sorted by highest average score']
+                        'Company Salary Analysis', 'Frequency of Words Analysis', 'Score based on given keywords', 'Companies sorted by highest average score']
     analysis_choice = st.sidebar.selectbox('Select Analysis Type', analysis_options)
 
     if analysis_choice == 'Frequency of Words Analysis':
@@ -244,14 +240,13 @@ def main():
     
     dataset_choice = st.sidebar.radio('Choose Dataset for Analysis', ('Complete Dataset', 'Filtered Dataset'))
     if dataset_choice == 'Filtered Dataset':
-        for key in session_state.df.columns:
+        for key in session_state.original_df.columns:
             queries[key] = [st.sidebar.text_input(f'Filter by {key}', key=f'filter_{key}')]
-        session_state.df_filtered = filter_dataframe(session_state.df, queries)
-    data_to_analyze = session_state.df if dataset_choice == 'Complete Dataset' else session_state.df_filtered
+        session_state.df_filtered = filter_dataframe(session_state.original_df, queries)
+    data_to_analyze = session_state.original_df if dataset_choice == 'Complete Dataset' else session_state.df_filtered
         
     if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score']:
-        cv = st.sidebar.text_input("Enter your CV here")
-        
+        cv = st.sidebar.text_area("Enter your CV here", height=200)
         
     # Perform analysis based on user choice
     if st.sidebar.button('Run Analysis'):
@@ -285,4 +280,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
