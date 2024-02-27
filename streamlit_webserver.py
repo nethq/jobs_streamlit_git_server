@@ -82,7 +82,6 @@ def score_compute(data, tokenized_text):
     if isinstance(data['text'], str):
         data['score'] = data['text'].apply(lambda x: len(set(re.split(r'\W+', x.lower())).difference(stop_words).intersection(tokenized_text)))        
     else:
-        #based on the type, it says here its a series
         data['score'] = data['text'].apply(lambda x: len(set(re.split(r'\W+', x.lower())).difference(stop_words).intersection(tokenized_text)) if isinstance(x, str) else 0)
     return data
 
@@ -93,16 +92,13 @@ def companies_sorted_by_highest_avg_score(data, tokenized_text):
         return
     company_scores = {}
     unique_companies = score_data['secondary_text'].unique()
-    #get the number of posts of each unique company
-    posts_count ={}
+    posts_count = {}
     for company in unique_companies:
         posts_count[company] = score_data[score_data['secondary_text'] == company].shape[0]
         company_score = score_data[score_data['secondary_text'] == company]['score'].mean()
         company_scores[company] = company_score
     company_scores = pd.DataFrame(list(company_scores.items()), columns=['company', 'average_score'])
     company_scores['posts_count'] = company_scores['company'].apply(lambda x: posts_count[x])
-    #print the datatype of the "comapny_scores"]
-    #if its a dataframe, then sort it by the average_score ,and secondly by the posts_count
     if isinstance(company_scores, pd.DataFrame):
         company_scores = company_scores.sort_values(by=['average_score', 'posts_count'], ascending=False)
     st.write(company_scores)
@@ -161,6 +157,7 @@ def company_salary_analysis(data):
 
 # Function to perform frequency of words analysis
 def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
+    #prompt the user to select if they wish to check a company's job postings, how common is their wording -
     stop_words = stopwords.words('english')
     stop_words.extend(['.', ',', '"', "'", '?', '!', ':', ';', '(', ')', '[', ']', '{', '}'])
     words = []
@@ -172,7 +169,7 @@ def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
             del word_counter[word]
     most_common_words = pd.DataFrame(word_counter.most_common(most_common), columns=['Word', 'Frequency']).set_index('Word')
     st.write(most_common_words)
-
+      
 # Streamlit UI
 def main():
     st.set_page_config(layout='wide')
@@ -185,6 +182,8 @@ def main():
         session_state.original_df = None
     if 'df_filtered' not in session_state:
         session_state.df_filtered = None
+    if 'applied_filters' not in session_state:
+        session_state.applied_filters = None
 
     st.title('Job Listings Interface')
 
@@ -219,7 +218,16 @@ def main():
 
     # Display loaded DataFrame
     if session_state.original_df is not None:
-        st.dataframe(session_state.original_df, height=600)
+        if session_state.applied_filters:
+            st.write("Applied Filters:")
+            #display in a small table
+            #show only the non-empty display filters
+            display_filters = {k: v for k, v in session_state.applied_filters.items() if v[0]}
+            st.write(pd.DataFrame(display_filters.items(), columns=['Filter', 'Value']).set_index('Filter'))
+            st.write("Number of records after filtering: ", session_state.df_filtered.shape[0])
+            st.dataframe(session_state.df_filtered, height=600)
+        else:
+            st.dataframe(session_state.original_df, height=600)
 
     # Analysis options
     analysis_options = ['Salary Distribution Analysis', 'Job Title Salary Analysis', 
@@ -240,9 +248,14 @@ def main():
     
     dataset_choice = st.sidebar.radio('Choose Dataset for Analysis', ('Complete Dataset', 'Filtered Dataset'))
     if dataset_choice == 'Filtered Dataset':
+        session_state.display_complete_dataset = False
         for key in session_state.original_df.columns:
             queries[key] = [st.sidebar.text_input(f'Filter by {key}', key=f'filter_{key}')]
         session_state.df_filtered = filter_dataframe(session_state.original_df, queries)
+        session_state.applied_filters = queries
+    else:
+        session_state.display_complete_dataset = True
+        session_state.applied_filters = None
     data_to_analyze = session_state.original_df if dataset_choice == 'Complete Dataset' else session_state.df_filtered
         
     if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score']:
@@ -263,7 +276,6 @@ def main():
         elif analysis_choice == 'Frequency of Words Analysis':
             frequency_of_words_analysis(data_to_analyze, len_of_min_word, most_common)
         elif analysis_choice == 'Score based on given keywords':
-            #get the tokenized text
             tokenized_text = re.split(r'\W+', cv)
             tokenized_text = [word.lower() for word in tokenized_text]
             tokenized_text = [word for word in tokenized_text if word.isalpha()]
