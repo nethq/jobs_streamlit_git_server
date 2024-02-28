@@ -196,8 +196,6 @@ def main():
     if 'applied_filters' not in session_state:
         session_state.applied_filters = None
 
-    st.title('Job Listings Interface')
-
     # Check if database connection exists
     if session_state.db_engine is None:
         st.sidebar.header('Database Connection')
@@ -230,7 +228,7 @@ def main():
     # Display loaded DataFrame
     if session_state.original_df is not None:
         if session_state.applied_filters:
-            st.write("Applied Filters:")
+            st.write("Filtered Dataset, Applied Filters:")
             #display in a small table
             #show only the non-empty display filters
             display_filters = {k: v for k, v in session_state.applied_filters.items() if v[0]}
@@ -238,6 +236,7 @@ def main():
             st.write("Number of records after filtering: ", session_state.df_filtered.shape[0])
             st.dataframe(session_state.df_filtered, height=600)
         else:
+            st.write("Complete dataset:")
             st.dataframe(session_state.original_df, height=600)
 
     # Analysis options
