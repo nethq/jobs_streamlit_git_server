@@ -7,6 +7,17 @@ from nltk.corpus import stopwords
 import numpy as np
 import altair as alt
 from sqlalchemy import create_engine
+import streamlit as st
+import pandas as pd
+import re
+from collections import Counter
+from nltk.corpus import stopwords
+import numpy as np
+import altair as alt
+from sqlalchemy import create_engine
+
+st.set_page_config(layout='wide')
+
 
 # Function to establish database connection
 def connect_to_database(remote_db=False, user=None, password=None, host=None, port=None, database=None):
@@ -18,7 +29,7 @@ def connect_to_database(remote_db=False, user=None, password=None, host=None, po
         pass
 
 # Function to load data from the database
-@st.cache_data()
+@st.cache_data
 def load_data(_engine):
     try:
         query = 'SELECT * FROM JobPosts'
@@ -29,7 +40,6 @@ def load_data(_engine):
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return None
-
 
 # Function to filter dataframe based on user queries
 def filter_dataframe(df, queries):
@@ -83,6 +93,8 @@ def score_compute(data, tokenized_text):
         data['score'] = data['text'].apply(lambda x: len(set(re.split(r'\W+', x.lower())).difference(stop_words).intersection(tokenized_text)))        
     else:
         data['score'] = data['text'].apply(lambda x: len(set(re.split(r'\W+', x.lower())).difference(stop_words).intersection(tokenized_text)) if isinstance(x, str) else 0)
+    st.write("Dataframe including scores:")
+    st.dataframe(data)
     return data
 
 # Function to perform analysis on companies sorted by highest average score
@@ -172,7 +184,6 @@ def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
       
 # Streamlit UI
 def main():
-    st.set_page_config(layout='wide')
     session_state = st.session_state
 
     # Initialize session state variables
