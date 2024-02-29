@@ -3,18 +3,11 @@ import streamlit as st
 import pandas as pd
 import re
 from collections import Counter
-from nltk.corpus import stopwords
 import numpy as np
 import altair as alt
 from sqlalchemy import create_engine
-import streamlit as st
-import pandas as pd
-import re
-from collections import Counter
-from nltk.corpus import stopwords
-import numpy as np
-import altair as alt
-from sqlalchemy import create_engine
+
+stop_words = {"i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"} | {"и", "в", "во", "за", "со", "од", "се", "да", "не", "ние", "вие", "те", "тя", "то", "техни", "тях", "мой", "твой", "свой", "наш", "ваш", "свой", "мои", "твои", "свои", "наши", "ваши", "твои", "моите", "твоите", "своите", "нашите", "вашият", "твоят", "своят", "моето", "твоето", "своето", "нашето", "вашият", "твоите", "своите", "нашите", "вашия", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашата", "твоята", "своята", "моят", "твоят", "своят", "моите", "твоите", "своите", "нашите", "вашият", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашия", "твоя", "своя", "моите", "твоите", "своите", "нашите", "вашия", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашия", "твоя", "своя", "какво", "което", "когато", "къде", "защо", "как", "само", "от", "сам", "сама", "сами", "само", "все", "всичко", "някой", "някакъв", "някаква", "няколко", "малко", "много", "малък", "голям", "добър", "лош", "нов", "стар", "свой", "мъртъв", "жив", "слаб", "силен", "голям", "малък", "стар", "нов", "добър", "лош", "цял", "целия", "цялата", "цяло", "целият", "цялото", "друг", "друга", "друго", "други", "един", "едно", "една", "едни", "всички", "няколко", "който", "какъв", "каква", "какво", "кой", "коя", "кои", "които", "откъде", "докъде", "кога", "как", "кои", "които", "кой", "какъв", "каква", "какво", "всичко", "няколко", "малко", "много", "доста", "най", "малко", "много", "малко", "само", "няколко", "сам", "сама", "само", "нищо", "сичко", "нещо", "няколко", "всички", "друг", "друга", "друго", "други", "един", "едно", "една", "едни", "всички", "няколко", "който", "какъв", "каква", "какво", "кой", "коя", "кои", "които", "откъде", "докъде", "кога", "как", "колко", "къде", "защо", "кой", "коя", "кои"}
 
 st.set_page_config(layout='wide')
 
@@ -88,7 +81,6 @@ def score_compute(data, tokenized_text):
     elif isinstance(tokenized_text, set):
         tokenized_text = {word.lower() for word in tokenized_text}
 
-    stop_words = set(stopwords.words('english'))
     if isinstance(data['text'], str):
         data['score'] = data['text'].apply(lambda x: len(set(re.split(r'\W+', x.lower())).difference(stop_words).intersection(tokenized_text)))        
     else:
@@ -170,7 +162,6 @@ def company_salary_analysis(data):
 # Function to perform frequency of words analysis
 def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
     #prompt the user to select if they wish to check a company's job postings, how common is their wording -
-    stop_words = stopwords.words('english')
     stop_words.extend(['.', ',', '"', "'", '?', '!', ':', ';', '(', ')', '[', ']', '{', '}'])
     words = []
     for text in data['text']:
@@ -289,14 +280,12 @@ def main():
             tokenized_text = re.split(r'\W+', cv)
             tokenized_text = [word.lower() for word in tokenized_text]
             tokenized_text = [word for word in tokenized_text if word.isalpha()]
-            stop_words = set(stopwords.words('english'))
             tokenized_text = [word for word in tokenized_text if word not in stop_words]
             score_compute(data_to_analyze, tokenized_text)
         elif analysis_choice == 'Companies sorted by highest average score':
             tokenized_text = re.split(r'\W+', cv)
             tokenized_text = [word.lower() for word in tokenized_text]
             tokenized_text = [word for word in tokenized_text if word.isalpha()]
-            stop_words = set(stopwords.words('english'))
             tokenized_text = [word for word in tokenized_text if word not in stop_words]
             companies_sorted_by_highest_avg_score(data_to_analyze, tokenized_text)
 
