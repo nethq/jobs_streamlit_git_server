@@ -166,7 +166,6 @@ def company_salary_analysis(data):
 # Function to perform frequency of words analysis
 def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
     #prompt the user to select if they wish to check a company's job postings, how common is their wording -
-    stop_words.extend({'.', ',', '"', "'", '?', '!', ':', ';', '(', ')', '[', ']', '{', '}'})
     words = []
     for text in data['text']:
         words.extend([word for word in text.split() if word not in stop_words])
