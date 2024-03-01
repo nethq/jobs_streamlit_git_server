@@ -56,11 +56,15 @@ def advanced_text_filtering(df, key, query):
         for part in group.split('('):
             if '|' in part:
                 processed_group.append('|'.join(f'({token.strip()})' for token in part.split('|')))
+            elif '&' in part:
+                processed_group.append('&'.join(f'({token.strip()})' for token in part.split('&')))
+            elif '!' in part:
+                processed_group.append(f'~({part.strip()[1:]})')
             else:
-                processed_group.append(part.strip())
+                processed_group.append(f'({part.strip()})')
         processed_groups.append('&'.join(processed_group))
     final_query = '|'.join(processed_groups)
-    return df[df[key].str.contains(final_query, na=False)]
+    return df[df[key].str.contains(final_query, na=False, regex=True)]
 
 # Function to extract potential salaries from text
 def extract_potential_salaries(text):
@@ -162,7 +166,7 @@ def company_salary_analysis(data):
 # Function to perform frequency of words analysis
 def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
     #prompt the user to select if they wish to check a company's job postings, how common is their wording -
-    stop_words.extend(['.', ',', '"', "'", '?', '!', ':', ';', '(', ')', '[', ']', '{', '}'])
+    stop_words.extend({'.', ',', '"', "'", '?', '!', ':', ';', '(', ')', '[', ']', '{', '}'})
     words = []
     for text in data['text']:
         words.extend([word for word in text.split() if word not in stop_words])
@@ -176,7 +180,7 @@ def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
 # Streamlit UI
 def main():
     session_state = st.session_state
-
+    
     # Initialize session state variables
     if 'db_engine' not in session_state:
         session_state.db_engine = None
@@ -249,45 +253,51 @@ def main():
     
     dataset_choice = st.sidebar.radio('Choose Dataset for Analysis', ('Complete Dataset', 'Filtered Dataset'))
     if dataset_choice == 'Filtered Dataset':
-        session_state.display_complete_dataset = False
-        for key in session_state.original_df.columns:
-            queries[key] = [st.sidebar.text_input(f'Filter by {key}', key=f'filter_{key}')]
-        session_state.df_filtered = filter_dataframe(session_state.original_df, queries)
-        session_state.applied_filters = queries
+        try:            
+            session_state.display_complete_dataset = False
+            for key in session_state.original_df.columns:
+                queries[key] = [st.sidebar.text_input(f'Filter by {key}', key=f'filter_{key}')]
+            session_state.df_filtered = filter_dataframe(session_state.original_df, queries)
+            session_state.applied_filters = queries
+        except Exception as e:
+            st.error(f"Error applying filters: {e}")
     else:
         session_state.display_complete_dataset = True
         session_state.applied_filters = None
     data_to_analyze = session_state.original_df if dataset_choice == 'Complete Dataset' else session_state.df_filtered
         
     if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score']:
-        cv = st.sidebar.text_area("Enter your CV here", height=200)
+        cv = st.sidebar.text_area("Enter text / keywords", height=200)
         
     # Perform analysis based on user choice
     if st.sidebar.button('Run Analysis'):
         # Extract potential salaries for analysis
-        data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
-        
-        # Analysis based on user selection
-        if analysis_choice == 'Salary Distribution Analysis':
-            salary_distribution_analysis(data_to_analyze)
-        elif analysis_choice == 'Job Title Salary Analysis':
-            job_title_salary_analysis(data_to_analyze)
-        elif analysis_choice == 'Company Salary Analysis':
-            company_salary_analysis(data_to_analyze)
-        elif analysis_choice == 'Frequency of Words Analysis':
-            frequency_of_words_analysis(data_to_analyze, len_of_min_word, most_common)
-        elif analysis_choice == 'Score based on given keywords':
-            tokenized_text = re.split(r'\W+', cv)
-            tokenized_text = [word.lower() for word in tokenized_text]
-            tokenized_text = [word for word in tokenized_text if word.isalpha()]
-            tokenized_text = [word for word in tokenized_text if word not in stop_words]
-            score_compute(data_to_analyze, tokenized_text)
-        elif analysis_choice == 'Companies sorted by highest average score':
-            tokenized_text = re.split(r'\W+', cv)
-            tokenized_text = [word.lower() for word in tokenized_text]
-            tokenized_text = [word for word in tokenized_text if word.isalpha()]
-            tokenized_text = [word for word in tokenized_text if word not in stop_words]
-            companies_sorted_by_highest_avg_score(data_to_analyze, tokenized_text)
-
+        try:                
+            data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
+            
+            # Analysis based on user selection
+            if analysis_choice == 'Salary Distribution Analysis':
+                salary_distribution_analysis(data_to_analyze)
+            elif analysis_choice == 'Job Title Salary Analysis':
+                job_title_salary_analysis(data_to_analyze)
+            elif analysis_choice == 'Company Salary Analysis':
+                company_salary_analysis(data_to_analyze)
+            elif analysis_choice == 'Frequency of Words Analysis':
+                frequency_of_words_analysis(data_to_analyze, len_of_min_word, most_common)
+            elif analysis_choice == 'Score based on given keywords':
+                tokenized_text = re.split(r'\W+', cv)
+                tokenized_text = [word.lower() for word in tokenized_text]
+                tokenized_text = [word for word in tokenized_text if word.isalpha()]
+                tokenized_text = [word for word in tokenized_text if word not in stop_words]
+                score_compute(data_to_analyze, tokenized_text)
+            elif analysis_choice == 'Companies sorted by highest average score':
+                tokenized_text = re.split(r'\W+', cv)
+                tokenized_text = [word.lower() for word in tokenized_text]
+                tokenized_text = [word for word in tokenized_text if word.isalpha()]
+                tokenized_text = [word for word in tokenized_text if word not in stop_words]
+                companies_sorted_by_highest_avg_score(data_to_analyze, tokenized_text)
+        except Exception as e:
+            st.error(f"Error running analysis: {e}")
+            
 if __name__ == "__main__":
     main()
