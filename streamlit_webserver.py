@@ -28,11 +28,22 @@ def load_data(_engine):
         query = 'SELECT * FROM JobPosts'
         temp = pd.read_sql_query(query, _engine)
         temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', _engine), on='fingerprint', how='left')
-        temp = temp.merge(pd.read_sql_query('SELECT fingerprint, view_count, date, MAX(idx) as max_idx FROM view_counts WHERE view_count != \'Nan\'  GROUP BY fingerprint, view_count, date', _engine), on='fingerprint', how='left')
+        temp = temp.merge(pd.read_sql_query('SELECT fingerprint, MAX(view_count) AS highest_view_count, count(fingerprint) as observations FROM view_counts GROUP BY fingerprint;', _engine), on='fingerprint', how='left')
         return temp
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return None
+
+def dynamic_execution(_engine):
+    try:
+        return None
+        df = pd.read_sql_query('SELECT * FROM py_lib', _engine)
+        for index, row in df.iterrows():
+            if st.button("Function " + str(row['idx'])):
+                exec(row['function_code'])
+    except Exception as e:
+        st.error(f"Error executing dynamic functions: {e}")
+        
 
 # Function to filter dataframe based on user queries
 def filter_dataframe(df, queries):
@@ -267,7 +278,8 @@ def main():
         
     if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score']:
         cv = st.sidebar.text_area("Enter text / keywords", height=200)
-        
+    if session_state.db_engine:
+        dynamic_execution(session_state.db_engine)
     # Perform analysis based on user choice
     if st.sidebar.button('Run Analysis'):
         # Extract potential salaries for analysis
