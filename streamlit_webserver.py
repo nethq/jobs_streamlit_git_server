@@ -28,22 +28,23 @@ def load_data(_engine):
         query = 'SELECT * FROM JobPosts'
         temp = pd.read_sql_query(query, _engine)
         temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', _engine), on='fingerprint', how='left')
-        temp = temp.merge(pd.read_sql_query('SELECT fingerprint, MAX(view_count) AS highest_view_count, count(fingerprint) as observations FROM view_counts GROUP BY fingerprint;', _engine), on='fingerprint', how='left')
+        temp = temp.merge(pd.read_sql_query('SELECT fingerprint, MAX(view_count) AS highest_view_count, count(fingerprint) as observations FROM view_counts GROUP BY fingerprint', _engine), on='fingerprint', how='left')
         return temp
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return None
 
-def dynamic_execution(_engine):
-    try:
-        return None
-        df = pd.read_sql_query('SELECT * FROM py_lib', _engine)
+def dynamic_execution(session_state,_engine):
+    df = pd.read_sql_query('SELECT * FROM py_lib', _engine)
+    try:        
         for index, row in df.iterrows():
-            if st.button("Function " + str(row['idx'])):
-                exec(row['function_code'])
+            try:
+                if st.button("Function " + str(row['idx'])):
+                        exec(row['exec_code'], globals(), locals())
+            except Exception as e:
+                st.error(f"Error running singular dynamic execution function: {e}")
     except Exception as e:
-        st.error(f"Error executing dynamic functions: {e}")
-        
+        st.error(f"Error running dynamic execution: {e}")
 
 # Function to filter dataframe based on user queries
 def filter_dataframe(df, queries):
@@ -229,7 +230,13 @@ def main():
                 st.sidebar.success("Data loaded successfully!")
             else:
                 st.sidebar.error("Failed to load data!")
-
+    elif session_state.original_df is not None and session_state.db_engine:
+        if st.sidebar.button('Reload Data'):
+            session_state.original_df = load_data(session_state.db_engine)
+            if session_state.original_df is not None:
+                st.sidebar.success("Data reloaded successfully!")
+            else:
+                st.sidebar.error("Failed to reload data!")
     # Display loaded DataFrame
     if session_state.original_df is not None:
         if session_state.applied_filters:
@@ -279,7 +286,7 @@ def main():
     if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score']:
         cv = st.sidebar.text_area("Enter text / keywords", height=200)
     if session_state.db_engine:
-        dynamic_execution(session_state.db_engine)
+        dynamic_execution(session_state,session_state.db_engine)
     # Perform analysis based on user choice
     if st.sidebar.button('Run Analysis'):
         # Extract potential salaries for analysis
