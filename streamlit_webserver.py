@@ -11,6 +11,23 @@ stop_words = {"i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you"
 
 st.set_page_config(layout='wide')
 
+def show_popup(prompt="Enter text here:"):
+    user_input = None
+
+    # Initialize user_input as None
+    while user_input is None:
+        user_input = st.text_input(f"{prompt}")
+        submitted = st.button("OK")
+        cancelled = st.button("Cancel")
+
+        if submitted:
+            # Close the popup and return the user input
+            return user_input, True
+        elif cancelled:
+            # Close the popup and return None to indicate cancellation
+            return None, False
+
+
 
 # Function to establish database connection
 def connect_to_database(remote_db=False, user=None, password=None, host=None, port=None, database=None):
@@ -287,6 +304,8 @@ def main():
         cv = st.sidebar.text_area("Enter text / keywords", height=200)
     if session_state.db_engine:
         dynamic_execution(session_state,session_state.db_engine)
+        
+
     # Perform analysis based on user choice
     if st.sidebar.button('Run Analysis'):
         # Extract potential salaries for analysis
