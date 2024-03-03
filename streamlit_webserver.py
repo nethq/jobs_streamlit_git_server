@@ -56,7 +56,7 @@ def dynamic_execution(session_state,_engine):
     try:        
         for index, row in df.iterrows():
             try:
-                if st.button("Function " + str(row['idx'])):
+                if st.button(f"{row['idx']}-{row['fn_name']}"):
                         exec(row['exec_code'], globals(), locals())
             except Exception as e:
                 st.error(f"Error running singular dynamic execution function: {e}")
