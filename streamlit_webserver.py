@@ -95,8 +95,61 @@ def advanced_text_filtering(df, key, query):
     final_query = '|'.join(processed_groups)
     return df[df[key].str.contains(final_query, na=False, regex=True)]
 
+def salary_extract_df(dataframe):
+    def extract_sequences(input_string):
+        # Define the regular expression pattern with groups
+        pattern = r'\b(BGN|EUR|ЛВ|Евро|\$|€|лв|евро)\s*(\d+(?:\s*-\s*\d+)?)|\b(\d+)\s*(BGN|EUR|ЛВ|Евро|\$|€|лв|евро)(?:\s*-\s*\d+)?'
+        
+        # Find all matches using the pattern
+        matches = re.findall(pattern, input_string)
+
+        # Process matches to format the output
+        processed_matches = []
+        for match in matches:
+            # Match can be in either of the two groups depending on the format
+            if match[0]:  # Currency is in the first group
+                processed_matches.append((match[0], match[1]))
+            else:  # Currency is in the fourth group
+                processed_matches.append((match[3], match[2]))
+            #in the matches, there are sometimes entries like "5000до8000", we need to split them into [5000,8000]
+            for i in range(len(processed_matches)):
+                #try catching 2 sequences of numbers
+                regex = re.compile(r"(\d+)")
+                matches = regex.findall(processed_matches[i][1])
+                if len(matches) > 1:
+                    processed_matches[i] = (processed_matches[i][0], matches[0])
+                    processed_matches.append((processed_matches[i][0], matches[1]))
+    
+        
+        return processed_matches
+
+    def extract_potential_salaries(text):
+        matches = re.findall(r"(\d+.{1,5}\d+)", str(text))
+        filtered_matches = []
+        for match in matches:
+            start_idx = text.find(match)
+            end_idx = start_idx + len(match)
+            surrounding_text = text[max(0, start_idx - 20):min(end_idx + 20, len(text))]
+            if "BGN" in surrounding_text or "EUR" in surrounding_text or "$" in surrounding_text or "€" in surrounding_text or "лв" in surrounding_text or "евро" in surrounding_text:
+                filtered_matches.append(match)
+        return filtered_matches if filtered_matches else None
+
+    #for each row in the dataframe, run both algorithms both on the text and the secondary text
+    for index, row in dataframe.iterrows():
+        matches = extract_sequences(row['text'])
+        matches_secondary = extract_sequences(row['secondary_text'])
+        matches_from_text = extract_potential_salaries(row['text'])
+        matches_from_secondary = extract_potential_salaries(row['secondary_text'])
+        dataframe.at[index, 'matches'] = str(matches)
+        dataframe.at[index, 'matches_secondary'] = str(matches_secondary)
+        dataframe.at[index, 'filtered_matches_from_text'] = matches_from_text
+        dataframe.at[index, 'filtered_matches_from_secondary'] = matches_from_secondary
+    dataframe['average_salary'] = dataframe['filtered_matches_from_text'].apply(lambda x: np.mean([int(i) for i in re.findall(r'\d+', str(x))]) if x is not None else None)
+    return dataframe
+
 # Function to extract potential salaries from text
 def extract_potential_salaries(text):
+    
     matches = re.findall(r"(\d+.{1,5}\d+)", str(text))
     filtered_matches = []
     for match in matches:
@@ -146,7 +199,10 @@ def companies_sorted_by_highest_avg_score(data, tokenized_text):
 
 # Function to perform salary distribution analysis
 def salary_distribution_analysis(data):
+    if 'average_salary' not in data.columns:
+        salary_extract_df(data)
     salaries = []
+    #drop entries below minimum wage
     for matches in data['filtered_matches_from_text']:
         if matches is not None:
             for match in matches:
@@ -154,14 +210,17 @@ def salary_distribution_analysis(data):
                 for num in numbers:
                     if num:
                         salaries.append(int(num.replace(',', '')))
+    #drop salaries below 800
+    salaries = [x for x in salaries if x > 800]
     counts, bins = np.histogram(salaries, bins=30)
     bins = 0.5 * (bins[:-1] + bins[1:])
     st.bar_chart(pd.DataFrame({'Salary': bins, 'Count': counts}).set_index('Salary'))
+    st.write(pd.DataFrame({'Salary': bins, 'Count': counts}))
 
 # Function to perform job title salary analysis
 def job_title_salary_analysis(data):
-    data['average_salary'] = data['filtered_matches_from_text'].apply(
-        lambda x: np.mean([int(num.replace(',', '')) for match in x for num in re.split(r'\D+', match) if num]) if x else None)
+    if 'average_salary' not in data.columns:
+        salary_extract_df(data)
     set_unique_titles = data['card_title'].unique()
     title_salaries = {}
     for title in set_unique_titles:
@@ -177,8 +236,8 @@ def job_title_salary_analysis(data):
 
 # Function to perform company salary analysis
 def company_salary_analysis(data):
-    data['average_salary'] = data['filtered_matches_from_text'].apply(
-        lambda x: np.mean([int(num.replace(',', '')) for match in x for num in re.split(r'\D+', match) if num]) if x else None)
+    if 'average_salary' not in data.columns:
+        salary_extract_df(data)
     set_unique_companies = data['secondary_text'].unique()
     company_salaries = {}
     for company in set_unique_companies:
@@ -191,6 +250,22 @@ def company_salary_analysis(data):
         y=alt.Y('company', sort=None, title="Company"),
     ), use_container_width=True)
     st.write(company_salaries)
+
+def normalize_and_display_scores(dataframe):
+    # Calculate the average score
+    average_score = dataframe['score'].mean()
+    
+    # Normalize scores by dividing by the average score
+    dataframe['normalized_score'] = dataframe['score'] / average_score
+    
+    # Display the original DataFrame
+    st.write("Original Data")
+    st.dataframe(dataframe[['fingerprint', 'secondary_text', 'score']])
+    
+    # Display the DataFrame with normalized scores
+    st.write("Data with Normalized Scores")
+    st.dataframe(dataframe[['fingerprint', 'secondary_text', 'normalized_score']])
+
 
 # Function to perform frequency of words analysis
 def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
@@ -270,7 +345,9 @@ def main():
 
     # Analysis options
     analysis_options = ['Salary Distribution Analysis', 'Job Title Salary Analysis', 
-                        'Company Salary Analysis', 'Frequency of Words Analysis', 'Score based on given keywords', 'Companies sorted by highest average score']
+                        'Company Salary Analysis', 'Frequency of Words Analysis', 'Score based on given keywords',
+                        'Companies sorted by highest average score','Normalized Scores Against CV']
+    
     analysis_choice = st.sidebar.selectbox('Select Analysis Type', analysis_options)
 
     if analysis_choice == 'Frequency of Words Analysis':
@@ -298,9 +375,10 @@ def main():
     else:
         session_state.display_complete_dataset = True
         session_state.applied_filters = None
+        
     data_to_analyze = session_state.original_df if dataset_choice == 'Complete Dataset' else session_state.df_filtered
         
-    if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score']:
+    if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score', 'Normalized Scores Against CV']:
         cv = st.sidebar.text_area("Enter text / keywords", height=200)
     if session_state.db_engine:
         dynamic_execution(session_state,session_state.db_engine)
@@ -310,14 +388,16 @@ def main():
     if st.sidebar.button('Run Analysis'):
         # Extract potential salaries for analysis
         try:                
-            data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
-            
             # Analysis based on user selection
             if analysis_choice == 'Salary Distribution Analysis':
+                salary_extract_df(data_to_analyze)
+                data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
                 salary_distribution_analysis(data_to_analyze)
             elif analysis_choice == 'Job Title Salary Analysis':
+                data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
                 job_title_salary_analysis(data_to_analyze)
             elif analysis_choice == 'Company Salary Analysis':
+                data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
                 company_salary_analysis(data_to_analyze)
             elif analysis_choice == 'Frequency of Words Analysis':
                 frequency_of_words_analysis(data_to_analyze, len_of_min_word, most_common)
@@ -333,6 +413,12 @@ def main():
                 tokenized_text = [word for word in tokenized_text if word.isalpha()]
                 tokenized_text = [word for word in tokenized_text if word not in stop_words]
                 companies_sorted_by_highest_avg_score(data_to_analyze, tokenized_text)
+            elif analysis_choice == 'Normalized Scores Against CV':
+                score_compute(data_to_analyze, cv)
+                if "score" in data_to_analyze.columns:
+                    normalize_and_display_scores(data_to_analyze)
+                else:
+                    st.error("No scores found in the dataset. Please run the score based on given keywords analysis first.")
         except Exception as e:
             st.error(f"Error running analysis: {e}")
             
