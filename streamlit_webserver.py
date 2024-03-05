@@ -56,6 +56,7 @@ def load_data(_engine):
 
 def dynamic_execution(session_state,_engine):
     df = pd.read_sql_query('SELECT * FROM py_lib', _engine)
+    session_state.dynamic_functions_df = df
     try:        
         for index, row in df.iterrows():
             try:
@@ -288,6 +289,10 @@ def main():
     session_state = st.session_state
     
     # Initialize session state variables
+    if "dynamic_functions_df" not in session_state:
+        session_state.dynamic_functions_df = None
+    if "sync" not in session_state:
+        session_state.sync = False
     if 'db_engine' not in session_state:
         session_state.db_engine = None
     if 'original_df' not in session_state:
@@ -328,6 +333,7 @@ def main():
     elif session_state.original_df is not None and session_state.db_engine:
         if st.sidebar.button('Reload Data'):
             session_state.original_df = load_data(session_state.db_engine)
+            dynamic_execution(session_state,session_state.db_engine)
             if session_state.original_df is not None:
                 st.sidebar.success("Data reloaded successfully!")
             else:
@@ -383,7 +389,8 @@ def main():
         
     if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score', 'Normalized Scores Against CV']:
         cv = st.sidebar.text_area("Enter text / keywords", height=200)
-    if session_state.db_engine:
+        
+    if session_state.db_engine and session_state.dynamic_functions_df is not None:       
         dynamic_execution(session_state,session_state.db_engine)
         
 
