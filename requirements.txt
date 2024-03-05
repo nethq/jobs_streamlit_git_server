@@ -11,3 +11,4 @@ sympy
 altair
 sqlalchemy
 mysql-connector
+datetime
