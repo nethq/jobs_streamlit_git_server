@@ -205,17 +205,8 @@ def companies_sorted_by_highest_avg_score(data, tokenized_text):
 def salary_distribution_analysis(data):
     if 'average_salary' not in data.columns:
         salary_extract_df(data)
-    salaries = []
-    #drop entries below minimum wage
-    for matches in data['filtered_matches_from_text']:
-        if matches is not None:
-            for match in matches:
-                numbers = re.split(r'\D+', match)
-                for num in numbers:
-                    if num:
-                        salaries.append(int(num.replace(',', '')))
-    #drop salaries below 800
-    salaries = [x for x in salaries if x > 800]
+    salaries = data['average_salary'].tolist()
+    salaries = [salary for salary in salaries if salary > 800]
     counts, bins = np.histogram(salaries, bins=30)
     bins = 0.5 * (bins[:-1] + bins[1:])
     st.bar_chart(pd.DataFrame({'Salary': bins, 'Count': counts}).set_index('Salary'))
@@ -400,15 +391,11 @@ def main():
         try:                
             # Analysis based on user selection
             if analysis_choice == 'Salary Distribution Analysis':
-                salary_extract_df(data_to_analyze)
-                data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
-                salary_distribution_analysis(data_to_analyze)
+                salary_distribution_analysis(salary_extract_df(data_to_analyze))
             elif analysis_choice == 'Job Title Salary Analysis':
-                data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
-                job_title_salary_analysis(data_to_analyze)
+                job_title_salary_analysis(salary_extract_df(data_to_analyze))
             elif analysis_choice == 'Company Salary Analysis':
-                data_to_analyze['filtered_matches_from_text'] = data_to_analyze['text'].apply(extract_potential_salaries)
-                company_salary_analysis(data_to_analyze)
+                company_salary_analysis(salary_extract_df(data_to_analyze))
             elif analysis_choice == 'Frequency of Words Analysis':
                 frequency_of_words_analysis(data_to_analyze, len_of_min_word, most_common)
             elif analysis_choice == 'Score based on given keywords':
