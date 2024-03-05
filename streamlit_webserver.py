@@ -206,7 +206,7 @@ def salary_distribution_analysis(data):
     if 'average_salary' not in data.columns:
         salary_extract_df(data)
     salaries = data['average_salary'].tolist()
-    salaries = [salary for salary in salaries if salary > 800]
+    salaries = [salary for salary in salaries if salary is not None]
     counts, bins = np.histogram(salaries, bins=30)
     bins = 0.5 * (bins[:-1] + bins[1:])
     st.bar_chart(pd.DataFrame({'Salary': bins, 'Count': counts}).set_index('Salary'))
@@ -227,6 +227,8 @@ def job_title_salary_analysis(data):
         x=alt.X('average_salary', title="Average Salary"),
         y=alt.Y('title', sort=None, title="Job Title"),
     ), use_container_width=True)
+    #write the counts of each job title's job posts with salary
+    title_salaries['posts_count'] = title_salaries['title'].apply(lambda x: data[data['card_title'] == x].shape[0])
     st.write(title_salaries)
 
 # Function to perform company salary analysis
@@ -244,6 +246,8 @@ def company_salary_analysis(data):
         x=alt.X('average_salary', title="Average Salary"),
         y=alt.Y('company', sort=None, title="Company"),
     ), use_container_width=True)
+    #add the counts of each company's job posts with salary
+    company_salaries['posts_count'] = company_salaries['company'].apply(lambda x: data[data['secondary_text'] == x].shape[0])
     st.write(company_salaries)
 
 def normalize_and_display_scores(dataframe):
