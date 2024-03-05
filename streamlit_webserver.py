@@ -138,12 +138,12 @@ def salary_extract_df(dataframe):
                 filtered_matches.append(match)
         return filtered_matches if filtered_matches else None
 
-    #for each row in the dataframe, run both algorithms both on the text and the secondary text
+    #for each row in the dataframe, run both algorithms both on the text and the card_info
     for index, row in dataframe.iterrows():
         matches = extract_sequences(row['text'])
-        matches_secondary = extract_sequences(row['secondary_text'])
+        matches_secondary = extract_sequences(row['card_info'])
         matches_from_text = extract_potential_salaries(row['text'])
-        matches_from_secondary = extract_potential_salaries(row['secondary_text'])
+        matches_from_secondary = extract_potential_salaries(row['card_info'])
         dataframe.at[index, 'matches'] = str(matches)
         dataframe.at[index, 'matches_secondary'] = str(matches_secondary)
         dataframe.at[index, 'filtered_matches_from_text'] = matches_from_text
