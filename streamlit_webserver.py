@@ -99,59 +99,59 @@ def advanced_text_filtering(df, key, query):
     final_query = '|'.join(processed_groups)
     return df[df[key].str.contains(final_query, na=False, regex=True)]
 
-def salary_extract_df(dataframe):
+def salary_extract_df(dataframe, minimum_wage=900, maximum_salary=1000000):
     def extract_sequences(input_string):
-        # Define the regular expression pattern with groups
-        pattern = r'\b(BGN|EUR|ЛВ|Евро|\$|€|лв|евро)\s*(\d+(?:\s*-\s*\d+)?)|\b(\d+)\s*(BGN|EUR|ЛВ|Евро|\$|€|лв|евро)(?:\s*-\s*\d+)?'
+        # Simplified pattern to capture numerical values possibly in a range
+        pattern = r'\b\d+\s*(?:до|-)?\s*\d*'
         
         # Find all matches using the pattern
         matches = re.findall(pattern, input_string)
 
-        # Process matches to format the output
+        # Process matches to extract numerical values
         processed_matches = []
         for match in matches:
-            # Match can be in either of the two groups depending on the format
-            if match[0]:  # Currency is in the first group
-                processed_matches.append((match[0], match[1]))
-            else:  # Currency is in the fourth group
-                processed_matches.append((match[3], match[2]))
-            #in the matches, there are sometimes entries like "5000до8000", we need to split them into [5000,8000]
-            for i in range(len(processed_matches)):
-                #try catching 2 sequences of numbers
-                regex = re.compile(r"(\d+)")
-                matches = regex.findall(processed_matches[i][1])
-                if len(matches) > 1:
-                    processed_matches[i] = (processed_matches[i][0], matches[0])
-                    processed_matches.append((processed_matches[i][0], matches[1]))
-    
+            # Find the starting index of each match
+            start_index = input_string.find(match)
+            # Check for "BGN" or "EUR" within 25 characters of the match
+            pre_text = input_string[max(0, start_index-25):start_index]
+            post_text = input_string[start_index:start_index+25]
+            if "BGN" in pre_text or "BGN" in post_text or "EUR" in pre_text or "EUR" in post_text:
+                # Extract numbers from the match
+                nums = re.findall(r'\d+', match)
+                # Filter and convert numbers, checking against min and max thresholds
+                for num in nums:
+                    num_int = int(num)
+                    if minimum_wage <= num_int <= maximum_salary:
+                        processed_matches.append(num_int)
         
         return processed_matches
 
-    def extract_potential_salaries(text):
-        matches = re.findall(r"(\d+.{1,5}\d+)", str(text))
-        filtered_matches = []
-        for match in matches:
-            start_idx = text.find(match)
-            end_idx = start_idx + len(match)
-            surrounding_text = text[max(0, start_idx - 20):min(end_idx + 20, len(text))]
-            if "BGN" in surrounding_text or "EUR" in surrounding_text or "$" in surrounding_text or "€" in surrounding_text or "лв" in surrounding_text or "евро" in surrounding_text:
-                filtered_matches.append(match)
-        return filtered_matches if filtered_matches else None
+    def calculate_average_salary(salaries):
+        if not salaries:
+            return None
+        # Compute the average of the provided salary numbers
+        return sum(salaries) / len(salaries)
 
-    #for each row in the dataframe, run both algorithms both on the text and the card_info
+    # Updated function to include the refined salary calculation
     for index, row in dataframe.iterrows():
-        matches = extract_sequences(row['text'])
-        matches_secondary = extract_sequences(row['card_info'])
-        matches_from_text = extract_potential_salaries(row['text'])
-        matches_from_secondary = extract_potential_salaries(row['card_info'])
-        dataframe.at[index, 'matches'] = str(matches)
-        dataframe.at[index, 'matches_secondary'] = str(matches_secondary)
-        dataframe.at[index, 'filtered_matches_from_text'] = matches_from_text
-        dataframe.at[index, 'filtered_matches_from_secondary'] = matches_from_secondary
-    dataframe['average_salary'] = dataframe['filtered_matches_from_text'].apply(lambda x: np.mean([int(i) for i in re.findall(r'\d+', str(x))]) if x is not None else None)
+        text_matches = extract_sequences(row['text'])
+        card_info_matches = extract_sequences(row['card_info'])
+        
+        # Combine all numerical matches from both text and card_info
+        all_matches = text_matches + card_info_matches
+        
+        # Store all found salary numbers for reference
+        dataframe.at[index, 'matches'] = str(all_matches)
+        
+        # Calculate average salary from all extracted numbers, if below minimum_wage set to None
+        average_salary = calculate_average_salary(all_matches)
+        if minimum_wage and average_salary and average_salary < minimum_wage:
+            average_salary = None
+        dataframe.at[index, 'average_salary'] = average_salary
+
     return dataframe
 
-# Function to extract potential salaries from text
+
 def extract_potential_salaries(text):
     
     matches = re.findall(r"(\d+.{1,5}\d+)", str(text))
