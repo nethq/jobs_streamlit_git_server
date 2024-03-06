@@ -15,22 +15,12 @@ stop_words = {"i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you"
 st.set_page_config(layout='wide')
 
 def show_popup(prompt="Enter text here:"):
-    user_input = None
-
-    # Initialize user_input as None
-    while user_input is None:
-        user_input = st.text_input(f"{prompt}")
-        submitted = st.button("OK")
-        cancelled = st.button("Cancel")
-
-        if submitted:
-            # Close the popup and return the user input
-            return user_input, True
-        elif cancelled:
-            # Close the popup and return None to indicate cancellation
-            return None, False
-
-
+    pass
+    # result = st.text_input(prompt)
+    # if st.button("OK") and result:
+    #     return result
+    # else:
+    #     st.stop()
 
 # Function to establish database connection
 def connect_to_database(remote_db=False, user=None, password=None, host=None, port=None, database=None):
@@ -77,11 +67,17 @@ def filter_dataframe(df, queries):
                 if query:
                     if query == '<empty>':
                         df = df[df[key].isnull()]
+                    elif "!" in query:
+                        df = df[~df[key].str.contains(query.replace('!', ''), na=False, regex=True)]
+                    elif query.startswith('!'):
+                        df = df[~df[key].str.contains(query.replace('!', ''), na=False, regex=True)]
+                    elif ")" not in query and "(" not in query:
+                        df = df[df[key].str.contains(query, na=False, regex=False)]
                     else:
-                        df = advanced_text_filtering(df, key, query)
+                        df = advanced_text_filtering(df, key, query)     
+                   
         return df
 
-# Function to perform advanced text filtering
 def advanced_text_filtering(df, key, query):
     processed_groups = []
     for group in query.split(')'):
@@ -257,16 +253,24 @@ def normalize_and_display_scores(dataframe):
     # Normalize scores by dividing by the average score
     dataframe['normalized_score'] = dataframe['score'] / average_score
     
-    # Display the original DataFrame
-    st.write("Original Data")
-    st.dataframe(dataframe[['fingerprint', 'secondary_text', 'score']])
+    # Sort the DataFrame by descending normalized score
+    sorted_dataframe = dataframe[['fingerprint', 'secondary_text', 'normalized_score']].sort_values(by='normalized_score', ascending=False)
     
-    # Display the DataFrame with normalized scores
-    st.write("Data with Normalized Scores")
-    st.dataframe(dataframe[['fingerprint', 'secondary_text', 'normalized_score']])
+    # Display the sorted DataFrame
+    st.write(sorted_dataframe)
+    
+    # Calculate the mean score for each secondary_text
+    mean_scores = sorted_dataframe.groupby('secondary_text').agg(mean_normalized_score=('normalized_score', 'mean')).reset_index()
+    
+    # Create Altair chart
+    chart = alt.Chart(mean_scores).mark_bar().encode(
+        x=alt.X('mean_normalized_score:Q', title="Mean Normalized Score"),
+        y=alt.Y('secondary_text:N', sort='-x', title="Company"),  # Sort by mean_normalized_score in descending order
+    )
 
+    # Display the chart
+    st.altair_chart(chart, use_container_width=True)
 
-# Function to perform frequency of words analysis
 def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
     #prompt the user to select if they wish to check a company's job postings, how common is their wording -
     words = []
@@ -321,6 +325,7 @@ def main():
         st.sidebar.header('Data Loading')
         if st.sidebar.button('Load Data'):
             session_state.original_df = load_data(session_state.db_engine)
+            dynamic_execution(session_state,session_state.db_engine)
             if session_state.original_df is not None:
                 st.sidebar.success("Data loaded successfully!")
             else:
@@ -333,19 +338,6 @@ def main():
                 st.sidebar.success("Data reloaded successfully!")
             else:
                 st.sidebar.error("Failed to reload data!")
-    # Display loaded DataFrame
-    if session_state.original_df is not None:
-        if session_state.applied_filters:
-            st.write("Filtered Dataset, Applied Filters:")
-            #display in a small table
-            #show only the non-empty display filters
-            display_filters = {k: v for k, v in session_state.applied_filters.items() if v[0]}
-            st.write(pd.DataFrame(display_filters.items(), columns=['Filter', 'Value']).set_index('Filter'))
-            st.write("Number of records after filtering: ", session_state.df_filtered.shape[0])
-            st.dataframe(session_state.df_filtered, height=600)
-        else:
-            st.write("Complete dataset:")
-            st.dataframe(session_state.original_df, height=600)
 
     # Analysis options
     analysis_options = ['Salary Distribution Analysis', 'Job Title Salary Analysis', 
@@ -380,6 +372,31 @@ def main():
         session_state.display_complete_dataset = True
         session_state.applied_filters = None
         
+        # Display loaded DataFrame
+    if session_state.original_df is not None:
+        #allow the user to input a number to identify how many records to show, as to not slow down the app,
+        num_records = st.sidebar.number_input('Number of records to display', min_value=1, max_value=session_state.original_df.shape[0], value=1000, step=100)
+        if session_state.applied_filters:
+            st.write("Filtered Dataset, Applied Filters:")
+            #display in a small table
+            #show only the non-empty display filters
+            display_filters = {k: v for k, v in session_state.applied_filters.items() if v[0]}
+            st.write(pd.DataFrame(display_filters.items(), columns=['Filter', 'Value']).set_index('Filter'))
+            st.write("Number of records after filtering: ", session_state.df_filtered.shape[0])
+            if num_records <= session_state.df_filtered.shape[0]:
+                st.dataframe(session_state.df_filtered.head(num_records), height=600)
+            else:
+                st.dataframe(session_state.df_filtered, height=600)
+        else:
+            if num_records <= session_state.original_df.shape[0]:
+                st.write("Complete dataset, no filters applied.")
+                st.write("Number of records: ", session_state.original_df.shape[0])
+                st.dataframe(session_state.original_df.head(num_records), height=600)
+            else:    
+                st.write("Complete dataset: ", session_state.original_df.shape[0], "total records.")
+                st.dataframe(session_state.original_df, height=600)
+
+
     data_to_analyze = session_state.original_df if dataset_choice == 'Complete Dataset' else session_state.df_filtered
         
     if analysis_choice in ['Score based on given keywords','Companies sorted by highest average score', 'Normalized Scores Against CV']:
