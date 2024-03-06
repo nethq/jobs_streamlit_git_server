@@ -61,39 +61,42 @@ def dynamic_execution(session_state,_engine):
 def filter_dataframe(df, queries):
     if not queries:
         return df
-    else:
-        for key in queries.keys():
-            for query in queries[key]:
-                if query:
-                    if query == '<empty>':
-                        df = df[df[key].isnull()]
-                    elif "!" in query:
-                        df = df[~df[key].str.contains(query.replace('!', ''), na=False, regex=True)]
-                    elif query.startswith('!'):
-                        df = df[~df[key].str.contains(query.replace('!', ''), na=False, regex=True)]
-                    elif ")" not in query and "(" not in query:
-                        df = df[df[key].str.contains(query, na=False, regex=False)]
-                    else:
-                        df = advanced_text_filtering(df, key, query)     
-                   
-        return df
+    for key in queries.keys():
+        #print the type of the value
+        if queries[key] == "" or queries[key] is None:
+            continue
+        if "," in queries[key]:
+            sub_terms = queries[key].split(",")
+            for sub_term in sub_terms:
+                if sub_term:
+                    df = advanced_text_filtering(df, key, sub_term)
+        else:
+            df = advanced_text_filtering(df, key, queries[key])
+    return df
 
 def advanced_text_filtering(df, key, query):
-    processed_groups = []
-    for group in query.split(')'):
-        processed_group = []
-        for part in group.split('('):
-            if '|' in part:
-                processed_group.append('|'.join(f'({token.strip()})' for token in part.split('|')))
-            elif '&' in part:
-                processed_group.append('&'.join(f'({token.strip()})' for token in part.split('&')))
-            elif '!' in part:
-                processed_group.append(f'~({part.strip()[1:]})')
-            else:
-                processed_group.append(f'({part.strip()})')
-        processed_groups.append('&'.join(processed_group))
-    final_query = '|'.join(processed_groups)
-    return df[df[key].str.contains(final_query, na=False, regex=True)]
+    if "|" in query:
+        terms = query.split("|")
+        st.warning("OR "+str(terms))
+        filtered_df = df[df[key].apply(lambda x: terms[0] in x or terms[1] in x)]
+    elif "&" in query:
+        terms = query.split("&")
+        st.warning("AND "+str(terms))
+        filtered_df = df[df[key].apply(lambda x: terms[0] in x and terms[1] in x)]
+    elif "!" in query:
+        #it will be "!<term>", so you need to further filter for the negation
+        term = query[1:]
+        st.warning("NOT "+str(term))
+        filtered_df = df[df[key].apply(lambda x: term not in x)]
+    elif query == "<empty>":
+        #return the df where the values in this column are Null/NaN
+        st.warning("EMPTY")
+        filtered_df = df[df[key].isnull()]
+    else:
+        st.warning("SINGLE "+str(query))
+        filtered_df = df[df[key].apply(lambda x: query in x)]
+        
+    return filtered_df
 
 def salary_extract_df(dataframe, minimum_wage=900, maximum_salary=1000000):
     def extract_sequences(input_string):
@@ -363,7 +366,7 @@ def main():
         try:            
             session_state.display_complete_dataset = False
             for key in session_state.original_df.columns:
-                queries[key] = [st.sidebar.text_input(f'Filter by {key}', key=f'filter_{key}')]
+                queries[key] = st.sidebar.text_input(f'Filter by {key}', key=f'filter_{key}')
             session_state.df_filtered = filter_dataframe(session_state.original_df, queries)
             session_state.applied_filters = queries
         except Exception as e:
@@ -380,7 +383,9 @@ def main():
             st.write("Filtered Dataset, Applied Filters:")
             #display in a small table
             #show only the non-empty display filters
-            display_filters = {k: v for k, v in session_state.applied_filters.items() if v[0]}
+            #the displayfilters is a dictionary with the following structure - {'column_name': str('filter_string')}
+            display_filters = {k: v for k, v in session_state.applied_filters.items() if v}
+
             st.write(pd.DataFrame(display_filters.items(), columns=['Filter', 'Value']).set_index('Filter'))
             st.write("Number of records after filtering: ", session_state.df_filtered.shape[0])
             if num_records <= session_state.df_filtered.shape[0]:
