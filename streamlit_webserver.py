@@ -33,7 +33,7 @@ def connect_to_database(remote_db=False, user=None, password=None, host=None, po
 
 # Function to load data from database    
 @st.cache_data
-def load_data(_engine,time_hash=hash(datetime.now().replace(minute=0, second=0, microsecond=0))):
+def load_data(_engine,time_hash=None):
     try:
         query = 'SELECT * FROM JobPosts'
         temp = pd.read_sql_query(query, _engine)
@@ -327,10 +327,10 @@ def main():
     if session_state.original_df is None and session_state.db_engine:
         st.sidebar.header('Data Loading')
         if st.sidebar.button('Load Data'):
-            session_state.original_df = load_data(session_state.db_engine)
+            session_state.original_df = load_data(session_state.db_engine,datetime.now().strftime("%Y-%m-%d %H"))
             dynamic_execution(session_state,session_state.db_engine)
         if st.sidebar.button("Reload Data"):
-            session_state.original_df = load_data(session_state.db_engine,hash(datetime.now()))
+            session_state.original_df = load_data(session_state.db_engine,datetime.now())
             dynamic_execution(session_state,session_state.db_engine)
     elif session_state.original_df is None and not session_state.db_engine:
         st.sidebar.error("No database connection available to load data from!")
