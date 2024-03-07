@@ -32,7 +32,7 @@ def connect_to_database(remote_db=False, user=None, password=None, host=None, po
         pass
 
 
-def load_data():
+def load_data(_engine):
     def load_data(_engine):
         try:
             query = 'SELECT * FROM JobPosts'
@@ -45,8 +45,8 @@ def load_data():
             return None
 
     if st.button("Re-Acquire Data"):
-        return load_data()
-    return st.cache_data(load_data)()
+        return load_data(_engine)
+    return st.cache(load_data)(_engine)
     
     
 def dynamic_execution(session_state,_engine):
