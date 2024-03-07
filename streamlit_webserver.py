@@ -31,19 +31,24 @@ def connect_to_database(remote_db=False, user=None, password=None, host=None, po
         # Connect to local database or any other preferred method
         pass
 
-# Function to load data from the database
-@st.cache_data
-def load_data(_engine):
-    try:
-        query = 'SELECT * FROM JobPosts'
-        temp = pd.read_sql_query(query, _engine)
-        temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', _engine), on='fingerprint', how='left')
-        temp = temp.merge(pd.read_sql_query('SELECT fingerprint, MAX(view_count) AS highest_view_count, count(fingerprint) as observations FROM view_counts GROUP BY fingerprint', _engine), on='fingerprint', how='left')
-        return temp
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return None
 
+def load_data():
+    def load_data(_engine):
+        try:
+            query = 'SELECT * FROM JobPosts'
+            temp = pd.read_sql_query(query, _engine)
+            temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', _engine), on='fingerprint', how='left')
+            temp = temp.merge(pd.read_sql_query('SELECT fingerprint, MAX(view_count) AS highest_view_count, count(fingerprint) as observations FROM view_counts GROUP BY fingerprint', _engine), on='fingerprint', how='left')
+            return temp
+        except Exception as e:
+            st.error(f"Error loading data: {e}")
+            return None
+
+    if st.button("Re-Acquire Data"):
+        return load_data()
+    return st.cache_data(load_data)()
+    
+    
 def dynamic_execution(session_state,_engine):
     df = pd.read_sql_query('SELECT * FROM py_lib', _engine)
     session_state.dynamic_functions_df = df
