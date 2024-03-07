@@ -31,24 +31,19 @@ def connect_to_database(remote_db=False, user=None, password=None, host=None, po
         # Connect to local database or any other preferred method
         pass
 
+# Function to load data from database    
+@st.cache_data
+def load_data(_engine,time_hash=hash(datetime.now().replace(minute=0, second=0, microsecond=0))):
+    try:
+        query = 'SELECT * FROM JobPosts'
+        temp = pd.read_sql_query(query, _engine)
+        temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', _engine), on='fingerprint', how='left')
+        temp = temp.merge(pd.read_sql_query('SELECT fingerprint, MAX(view_count) AS highest_view_count, count(fingerprint) as observations FROM view_counts GROUP BY fingerprint', _engine), on='fingerprint', how='left')
+        return temp
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None
 
-def load_data(_engine):
-    def load_data(_engine):
-        try:
-            query = 'SELECT * FROM JobPosts'
-            temp = pd.read_sql_query(query, _engine)
-            temp = temp.merge(pd.read_sql_query('SELECT * FROM longevity_tracker', _engine), on='fingerprint', how='left')
-            temp = temp.merge(pd.read_sql_query('SELECT fingerprint, MAX(view_count) AS highest_view_count, count(fingerprint) as observations FROM view_counts GROUP BY fingerprint', _engine), on='fingerprint', how='left')
-            return temp
-        except Exception as e:
-            st.error(f"Error loading data: {e}")
-            return None
-
-    if st.button("Re-Acquire Data"):
-        return load_data(_engine)
-    return st.cache(load_data)(_engine)
-    
-    
 def dynamic_execution(session_state,_engine):
     df = pd.read_sql_query('SELECT * FROM py_lib', _engine)
     session_state.dynamic_functions_df = df
@@ -334,19 +329,13 @@ def main():
         if st.sidebar.button('Load Data'):
             session_state.original_df = load_data(session_state.db_engine)
             dynamic_execution(session_state,session_state.db_engine)
-            if session_state.original_df is not None:
-                st.sidebar.success("Data loaded successfully!")
-            else:
-                st.sidebar.error("Failed to load data!")
-    elif session_state.original_df is not None and session_state.db_engine:
-        if st.sidebar.button('Reload Data'):
-            session_state.original_df = load_data(session_state.db_engine)
+        if st.sidebar.button("Reload Data"):
+            session_state.original_df = load_data(session_state.db_engine,hash(datetime.now()))
             dynamic_execution(session_state,session_state.db_engine)
-            if session_state.original_df is not None:
-                st.sidebar.success("Data reloaded successfully!")
-            else:
-                st.sidebar.error("Failed to reload data!")
-
+    elif session_state.original_df is None and not session_state.db_engine:
+        st.sidebar.error("No database connection available to load data from!")
+        st.stop()
+        
     # Analysis options
     analysis_options = ['Salary Distribution Analysis', 'Job Title Salary Analysis', 
                         'Company Salary Analysis', 'Frequency of Words Analysis', 'Score based on given keywords',
