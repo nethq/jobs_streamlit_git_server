@@ -22,13 +22,12 @@ def show_popup(prompt="Enter text here:"):
     # else:
     #     st.stop()
 
-# Function to establish database connection
-def connect_to_database(remote_db=False, user=None, password=None, host=None, port=None, database=None):
+def connect_to_database(remote_db, user, password, host, port, database):
     if remote_db:
         conn = f'mysql+mysqlconnector://{user}:{password}@{host}:{port}/{database}'
         return create_engine(conn)
     else:
-        # Connect to local database or any other preferred method
+        return None
         pass
 
 # Function to load data from database    
