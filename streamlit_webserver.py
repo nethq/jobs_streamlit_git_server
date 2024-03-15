@@ -385,6 +385,7 @@ def main():
                 st.dataframe(session_state.df_filtered.head(num_records), height=600)
             else:
                 st.dataframe(session_state.df_filtered, height=600)
+            session_state.selected_df = session_state.df_filtered
         else:
             if num_records <= session_state.original_df.shape[0]:
                 st.write("Complete dataset, no filters applied.")
@@ -393,6 +394,7 @@ def main():
             else:    
                 st.write("Complete dataset: ", session_state.original_df.shape[0], "total records.")
                 st.dataframe(session_state.original_df, height=600)
+            session_state.selected_df = session_state.original_df
 
 
     data_to_analyze = session_state.original_df if dataset_choice == 'Complete Dataset' else session_state.df_filtered
