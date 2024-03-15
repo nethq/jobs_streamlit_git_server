@@ -10,7 +10,7 @@ import datetime
 from datetime import datetime
 import time
 
-stop_words = {"i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"} | {"и", "в", "во", "за", "со", "од", "се", "да", "не", "ние", "вие", "те", "тя", "то", "техни", "тях", "мой", "твой", "свой", "наш", "ваш", "свой", "мои", "твои", "свои", "наши", "ваши", "твои", "моите", "твоите", "своите", "нашите", "вашият", "твоят", "своят", "моето", "твоето", "своето", "нашето", "вашият", "твоите", "своите", "нашите", "вашия", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашата", "твоята", "своята", "моят", "твоят", "своят", "моите", "твоите", "своите", "нашите", "вашият", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашия", "твоя", "своя", "моите", "твоите", "своите", "нашите", "вашия", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашия", "твоя", "своя", "какво", "което", "когато", "къде", "защо", "как", "само", "от", "сам", "сама", "сами", "само", "все", "всичко", "някой", "някакъв", "някаква", "няколко", "малко", "много", "малък", "голям", "добър", "лош", "нов", "стар", "свой", "мъртъв", "жив", "слаб", "силен", "голям", "малък", "стар", "нов", "добър", "лош", "цял", "целия", "цялата", "цяло", "целият", "цялото", "друг", "друга", "друго", "други", "един", "едно", "една", "едни", "всички", "няколко", "който", "какъв", "каква", "какво", "кой", "коя", "кои", "които", "откъде", "докъде", "кога", "как", "кои", "които", "кой", "какъв", "каква", "какво", "всичко", "няколко", "малко", "много", "доста", "най", "малко", "много", "малко", "само", "няколко", "сам", "сама", "само", "нищо", "сичко", "нещо", "няколко", "всички", "друг", "друга", "друго", "други", "един", "едно", "една", "едни", "всички", "няколко", "който", "какъв", "каква", "какво", "кой", "коя", "кои", "които", "откъде", "докъде", "кога", "как", "колко", "къде", "защо", "кой", "коя", "кои"}
+stop_words = {"send","email","запази","препрати","bookmark_border","kандидатствай","i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now"} | {"и", "в", "во", "за", "со", "од", "се", "да", "не", "ние", "вие", "те", "тя", "то", "техни", "тях", "мой", "твой", "свой", "наш", "ваш", "свой", "мои", "твои", "свои", "наши", "ваши", "твои", "моите", "твоите", "своите", "нашите", "вашият", "твоят", "своят", "моето", "твоето", "своето", "нашето", "вашият", "твоите", "своите", "нашите", "вашия", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашата", "твоята", "своята", "моят", "твоят", "своят", "моите", "твоите", "своите", "нашите", "вашият", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашия", "твоя", "своя", "моите", "твоите", "своите", "нашите", "вашия", "твоя", "своя", "моето", "твоето", "своето", "нашето", "вашия", "твоя", "своя", "какво", "което", "когато", "къде", "защо", "как", "само", "от", "сам", "сама", "сами", "само", "все", "всичко", "някой", "някакъв", "някаква", "няколко", "малко", "много", "малък", "голям", "добър", "лош", "нов", "стар", "свой", "мъртъв", "жив", "слаб", "силен", "голям", "малък", "стар", "нов", "добър", "лош", "цял", "целия", "цялата", "цяло", "целият", "цялото", "друг", "друга", "друго", "други", "един", "едно", "една", "едни", "всички", "няколко", "който", "какъв", "каква", "какво", "кой", "коя", "кои", "които", "откъде", "докъде", "кога", "как", "кои", "които", "кой", "какъв", "каква", "какво", "всичко", "няколко", "малко", "много", "доста", "най", "малко", "много", "малко", "само", "няколко", "сам", "сама", "само", "нищо", "сичко", "нещо", "няколко", "всички", "друг", "друга", "друго", "други", "един", "едно", "една", "едни", "всички", "няколко", "който", "какъв", "каква", "какво", "кой", "коя", "кои", "които", "откъде", "докъде", "кога", "как", "колко", "къде", "защо", "кой", "коя", "кои"}
 
 st.set_page_config(layout='wide')
 
@@ -149,6 +149,36 @@ def salary_extract_df(dataframe, minimum_wage=900, maximum_salary=1000000):
 
     return dataframe
 
+def calculate_average_salary_by_keyword_fixed(dataframe, stop_words_set):
+    def extract_keywords(text):
+        return re.findall(r'\b\w+\b', text.lower())
+    
+    dictionary_of_keywords = {"":[500,2]}
+    
+    for _, row in dataframe.iterrows():
+        if pd.notnull(row['average_salary']):
+            text = row['text'].lower()
+            keywords = extract_keywords(text)
+            unique_keywords = set([kw for kw in keywords if kw not in stop_words_set])
+
+            for keyword in unique_keywords:
+                if keyword in dictionary_of_keywords:
+                    dictionary_of_keywords[keyword][0] += row['average_salary']
+                    dictionary_of_keywords[keyword][1] += 1
+                else:
+                    dictionary_of_keywords[keyword] = [row['average_salary'], 1]
+    
+    #the resulting dataframe must have the count collumn too
+    
+    keyword_average_salaries = {keyword: salary[0] / salary[1] for keyword, salary in dictionary_of_keywords.items()}
+    salary_df = pd.DataFrame(keyword_average_salaries.items(), columns=['Keyword', 'Average Salary'])
+    salary_df['Count'] = salary_df['Keyword'].apply(lambda x: dictionary_of_keywords[x][1])
+    sorted_salary_df = salary_df.sort_values(by='Average Salary', ascending=False)
+    
+    # Display the sorted DataFrame
+    st.write(sorted_salary_df)
+    
+    return sorted_salary_df
 
 def extract_potential_salaries(text):
     
@@ -335,10 +365,10 @@ def main():
         st.sidebar.error("No database connection available to load data from!")
         st.stop()
         
-    # Analysis options
+    # Analysis optionsdis
     analysis_options = ['Salary Distribution Analysis', 'Job Title Salary Analysis', 
                         'Company Salary Analysis', 'Frequency of Words Analysis', 'Score based on given keywords',
-                        'Companies sorted by highest average score','Normalized Scores Against CV']
+                        'Companies sorted by highest average score','Normalized Scores Against CV', 'Keyword based salary distribution']
     
     analysis_choice = st.sidebar.selectbox('Select Analysis Type', analysis_options)
 
@@ -356,6 +386,8 @@ def main():
     
     dataset_choice = st.sidebar.radio('Choose Dataset for Analysis', ('Complete Dataset', 'Filtered Dataset'))
     if dataset_choice == 'Filtered Dataset':
+        st.warning("'!<keyword>(NOT)'   '<keyword>|<keyword>'(OR)   '<keyword>,<keyword>'(AND)") 
+        st.warning("!Senior, Пловдив|вкъщи -> Без Senior, съдържащи Пловдив или вкъщи")
         try:            
             session_state.display_complete_dataset = False
             for key in session_state.original_df.columns:
@@ -437,6 +469,11 @@ def main():
                     normalize_and_display_scores(data_to_analyze)
                 else:
                     st.error("No scores found in the dataset. Please run the score based on given keywords analysis first.")
+            elif analysis_choice == 'Keyword based salary distribution':
+                if type(stop_words) == set:                
+                    calculate_average_salary_by_keyword_fixed(data_to_analyze, stop_words)
+                else:
+                    st.error("No stop words found. Please ensure the stop words set is a set of strings.")
         except Exception as e:
             st.error(f"Error running analysis: {e}")
             
