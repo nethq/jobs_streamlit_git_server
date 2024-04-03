@@ -25,6 +25,8 @@ def connect_to_database(remote_db, user, password, host, port, database):
     else:
         return None
 
+
+
 # Function to load data from the database
 @st.cache_data
 def load_data():
@@ -306,9 +308,39 @@ def frequency_of_words_analysis(data, len_of_min_word=3, most_common=100):
             del word_counter[word]
     most_common_words = pd.DataFrame(word_counter.most_common(most_common), columns=['Word', 'Frequency']).set_index('Word')
     st.write(most_common_words)
-      
-# Streamlit UI
-# Streamlit UI
+    
+
+def display_eula():
+    st.title("End-User License Agreement (EULA)")
+    st.write("""
+    This End-User License Agreement (the "Agreement") is a legal agreement between you (the "User") and the creator of this application (the "Creator") for the use of the data provided through this application.
+    
+    **1. Use of Data**: The User is granted a non-exclusive, non-transferable license to access and use the data provided through this application solely for personal research purposes. The User shall not distribute, reproduce, modify, or exploit the data in any way for commercial purposes without the prior written consent of the Creator.
+    
+    **2. Data Collection and Sources**: The data provided through this application has been collected from open sources and is made available for research purposes. The Creator does not guarantee the accuracy, completeness, or reliability of the data.
+    
+    **3. Legal Exemption**: The User acknowledges and agrees that the Creator is exempt from any legal action arising from the use of the data provided through this application. The User further agrees not to hold the Creator liable for any damages, losses, or claims resulting from the use of the data.
+    
+    **4. Data Removal**: If any person wishes to have their data removed from the database, they may do so by filling out a data removal form provided by the Creator. The Creator shall promptly remove the requested data from the database upon receipt of a valid removal request.
+    
+    **5. Governing Law**: This Agreement shall be governed by and construed in accordance with the laws of the governing country, without regard to its conflict of law principles.
+    
+    **6. Entire Agreement**: This Agreement constitutes the entire agreement between the User and the Creator regarding the use of the data provided through this application and supersedes all prior or contemporaneous understandings and agreements, whether written or oral.
+    
+    By accessing or using the data provided through this application, the User acknowledges that they have read, understood, and agreed to be bound by the terms and conditions of this Agreement. If the User does not agree to these terms, they should not access or use the data.
+    """)
+# Main function to run the Streamlit app
+
+def eula(session_state):    
+    display_eula()
+    accept_eula = st.checkbox("I accept the terms and conditions of the End-User License Agreement")
+    if accept_eula:
+        session_state.eula = True
+        st.title("Welcome to the Application")
+    else:        
+        session_state.eula = False
+        st.error("You must accept the End-User License Agreement to proceed.")
+
 def main():
     session_state = st.session_state
     st.markdown(
@@ -332,7 +364,14 @@ def main():
         session_state.df_filtered = None
     if 'applied_filters' not in session_state:
         session_state.applied_filters = None
-
+    if 'eula' not in session_state:
+        session_state.eula = False
+    eula(session_state)
+    
+    if session_state.eula == False:
+        #hang but dont close the app, the user must be able to accept the EULA
+        return None
+    
     # Check if DataFrame is loaded
     if session_state.original_df is None:
         st.sidebar.header('Data Loading')
