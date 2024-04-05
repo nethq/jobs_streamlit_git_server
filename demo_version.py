@@ -484,7 +484,9 @@ def main():
                 else:
                     st.error("No scores found in the dataset. Please run the score based on given keywords analysis first.")
             elif analysis_choice == 'Keyword based salary distribution':
-                if type(stop_words) == set:                
+                if type(stop_words) == set:
+                    if 'average_salary' not in data_to_analyze.columns:
+                        data_to_analyze = salary_extract_df(data_to_analyze)
                     calculate_average_salary_by_keyword_fixed(data_to_analyze, stop_words)
                 else:
                     st.error("No stop words found. Please ensure the stop words set is a set of strings.")
